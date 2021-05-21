@@ -127,3 +127,12 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+.DS_Store
+15minute_data_california/~$metadata.xlsx
+Read-Me_Simulated-Dataset.pdf
+Simulated_Dataset_Final_Report.pdf
+15minute_data_california/15minute_data_california_readme.txt
+15minute_data_california/Metadata Column descriptions.pdf
+15minute_data_california/metadata.csv
+15minute_data_california/metadata.xlsx
+15minute_data_california/15minute_data_california.csv
