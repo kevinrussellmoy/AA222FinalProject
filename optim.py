@@ -110,6 +110,7 @@ constraints.append(E[week1-1] == 0.5*E_nom) # assume end half-charged
 #####
 ##### TODO: Convert power into -P_nom <= P[t] <= P_nom
 #####       with discharging as max(P[t], 0) and charging as -min(P[t], 0)
+##### May need to turn to Gurobi for MILP???
 
 for t in range(week1):
     # Power flow constraints
