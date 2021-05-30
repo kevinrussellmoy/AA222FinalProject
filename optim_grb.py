@@ -61,13 +61,12 @@ pvdf = pvdf * PV_ARRAY_SIZE_KW/pvdf.gen.max()
 
 #%% 
 ''' ~.~.~.~ optimization time ~.~.~.~ '''
-# TODO: randomly (or not so randomly) select 7-day intervals to optimize the dispatch
+# randomly (or not so randomly) select 7-day intervals to optimize the dispatch
 # first do for a set ESS size (500 kW, 950 kWh as in BLR Microgrid)
 
 # then make the ESS size a part of the function!
 # Constrain storage size to [min, max] and similarly power
 # Then find the optimum, and then find the closest "round" value and present those power flows
-
 # then add in degradation penalty
 
 load = agg_load.to_numpy()
@@ -120,17 +119,13 @@ dg = m.addMVar(week_len, lb=0, vtype=GRB.CONTINUOUS, name='dg')
 
 E = m.addMVar(week_len, lb=0, vtype=GRB.CONTINUOUS, name='E')
 
-# Decision variable to discharge (1) or charge (0)
-
-dischg = m.addVars(week_len, vtype=GRB.BINARY, name='dischg')
+# # Decision variable to discharge (1) or charge (0)
+# dischg = m.addVars(week_len, vtype=GRB.BINARY, name='dischg')
 
 m.addConstr(E[0] == 0.5 * E_nom)
-# m.addConstr(E[week_len-1] == 0.5*E_nom)
 
 m.addConstr(E_nom == STORAGE_DURATION*P_nom)
 
-# # Cost penalty for behavior that is detrimental to degradation
-# deg_cost = gp.QuadExpr()
 
 for t in range(week_len):
     # Power flow constraints
@@ -149,7 +144,6 @@ for t in range(week_len):
 
     # Time evolution of stored energy
     if t > 0:
-        # m.addConstr(E[t] == h*((1-dischg[t])*ess_c[t-1] - dischg[t]*ess_d[t-1]) + E[t-1])
         m.addConstr(E[t] == h*(ESS_EFF_CHG*ess_c[t-1] - ESS_EFF_DISCHG*ess_d[t-1]) + E[t-1])
 
     # Cost of fuel
