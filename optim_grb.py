@@ -75,7 +75,7 @@ pv = pvdf.to_numpy()
 
 week_len = 4*24*7
 # week_start = 0
-week_start = 30 * week_len
+week_start = 0 * week_len
 week_end = week_start + week_len
 
 # Try a different week in the year??
@@ -99,8 +99,8 @@ m = gp.Model('microgrid')
 # Assume a four-hour system
 # E_nom = 1500 # kWh
 # P_nom = 500 # kW
-P_nom = m.addMVar(1, lb=200, ub=2000, vtype=GRB.CONTINUOUS, name='P_nom')
-E_nom = m.addMVar(1, vtype=GRB.CONTINUOUS, name='E_nom')
+P_nom = m.addVar(lb=200, ub=2000, vtype=GRB.CONTINUOUS, name='P_nom')
+E_nom = m.addVar(vtype=GRB.CONTINUOUS, name='E_nom')
 
 # each power flow
 # format: to_from
@@ -115,12 +115,13 @@ load_curtail = m.addMVar(week_len, lb=0, vtype=GRB.CONTINUOUS, name='load_curtai
 ess_c = m.addMVar(week_len, lb=0, vtype=GRB.CONTINUOUS, name='ess_c')
 ess_d = m.addMVar(week_len, lb=0, vtype=GRB.CONTINUOUS, name='ess_d')
 
+#ESS binary variables for charge and discharge
+chg_bin = m.addMVar(week_len, vtype=GRB.BINARY, name='chg_bin')
+dch_bin = m.addMVar(week_len, vtype=GRB.BINARY, name='dch_bin')
+
 dg = m.addMVar(week_len, lb=0, vtype=GRB.CONTINUOUS, name='dg')
 
 E = m.addMVar(week_len, lb=0, vtype=GRB.CONTINUOUS, name='E')
-
-# # Decision variable to discharge (1) or charge (0)
-# dischg = m.addVars(week_len, vtype=GRB.BINARY, name='dischg')
 
 m.addConstr(E[0] == 0.5 * E_nom)
 
@@ -137,8 +138,8 @@ for t in range(week_len):
     m.addConstr(ess_d[t] == ess_load[t])
 
     # ESS power constraints
-    m.addConstr(ess_c[t] <= P_nom)
-    m.addConstr(ess_d[t] <= P_nom)
+    m.addConstr(ess_c[t] <= P_nom * chg_bin[t])
+    m.addConstr(ess_d[t] <= P_nom * dch_bin[t])
 
     m.addConstr(E[t] <= E_nom) 
 
@@ -146,14 +147,15 @@ for t in range(week_len):
     if t > 0:
         m.addConstr(E[t] == h*(ESS_EFF_CHG*ess_c[t-1] - ESS_EFF_DISCHG*ess_d[t-1]) + E[t-1])
 
-    # Cost of fuel
-
-#Ensure non-simultaneous charge and discharge aka why I downloaded Gurobi
-m.addConstrs(0 == ess_d[i] @ ess_c[i] for i in range(week_len))
+    # Ensure non-simultaneous charge and discharge across all time periods
+    m.addConstr(chg_bin[t] + dch_bin[t] <= 1)
 
 # TODO: Turn this into an explicit multi-objective problem via setObjectiveN
 m.setObjective(h*DIESEL_FUEL_CONS_A*dg.sum() + load_curtail.sum() + P_nom, GRB.MINIMIZE)
+
+# # Degradation penalty as in AA_222_Final_Project.pdf, Equation 2
 # m.setObjective(h*DIESEL_FUEL_CONS_A*dg.sum() + load_curtail.sum() + P_nom + 0.00005*(ess_c@ess_c) + 0.00005*(ess_d@ess_d), GRB.MINIMIZE)
+
 # m.setObjective(load_curtail.sum(), GRB.MINIMIZE)
 
 # Maybe cannot use setObjectiveN because it only takes in linear objectives!
